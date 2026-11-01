@@ -7,10 +7,15 @@
     <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="intro-active">
 
     <div id="custom-button-tooltip" role="tooltip" aria-hidden="true"></div>
     <div id="app-notifications" class="app-notifications" aria-live="polite" aria-relevant="additions removals"></div>
+
+    <div id="startup-intro" role="presentation" aria-hidden="true">
+        <img src="icons/icon.svg" alt="" draggable="false">
+    </div>
+    <audio id="startup-intro-audio" src="assets/intro.mp3" preload="auto" autoplay></audio>
 
     <div id="background-image-layer" aria-hidden="true"></div>
     <video id="background-video-layer" aria-hidden="true" autoplay muted loop playsinline></video>
@@ -484,7 +489,69 @@ Pero si quieres fuerza y cantar con pasión,
 
     <input type="file" id="audio-input" accept="audio/*" style="display: none;">
 
+    <script>
+        (() => {
+            const intro = document.getElementById('startup-intro');
+            const logo = intro.querySelector('img');
+            const introAudio = document.getElementById('startup-intro-audio');
+            const enterApp = () => {
+                document.body.classList.add('intro-transitioning');
+                document.body.classList.remove('intro-active');
+                intro.remove();
+                window.setTimeout(() => {
+                    document.body.classList.remove('intro-transitioning');
+                    document.dispatchEvent(new Event('recK:intro-finished'));
+                }, 1100);
+            };
+
+            introAudio.play().catch(error => {
+                console.error('No se pudo reproducir el sonido de inicio.', error);
+            });
+
+            const animateLogo = async () => {
+                await logo.animate(
+                    [{ transform: 'scale(.025)' }, { transform: 'scale(1.08)' }],
+                    { duration: 210, easing: 'cubic-bezier(.42,0,.58,1)', fill: 'forwards' }
+                ).finished;
+                await logo.animate(
+                    [{ transform: 'scale(1.08)' }, { transform: 'scale(1)' }],
+                    { duration: 260, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' }
+                ).finished;
+                await new Promise(resolve => window.setTimeout(resolve, 275));
+                await logo.animate(
+                    [
+                        { transform: 'scale(1) rotate(0deg)' },
+                        { transform: 'scale(1) rotate(360deg)' }
+                    ],
+                    { duration: 850, easing: 'cubic-bezier(.42,0,.58,1)', fill: 'forwards' }
+                ).finished;
+                await new Promise(resolve => window.setTimeout(resolve, 275));
+                await logo.animate(
+                    [
+                        { transform: 'translateY(0) scale(1)' },
+                        { transform: 'translateY(4px) scale(1.06,.92)' }
+                    ],
+                    { duration: 90, easing: 'cubic-bezier(.4,0,.8,.5)', fill: 'forwards' }
+                ).finished;
+                await logo.animate(
+                    [
+                        { transform: 'translateY(4px) scale(1.06,.92)' },
+                        { transform: 'translateY(-50px) rotate(-5deg) scale(.98,1.02)' }
+                    ],
+                    { duration: 250, easing: 'cubic-bezier(.15,.75,.35,1)', fill: 'forwards' }
+                ).finished;
+                await logo.animate(
+                    [
+                        { transform: 'translateY(-50px) rotate(-5deg) scale(.98,1.02)' },
+                        { transform: 'translateY(115vh) rotate(8deg) scale(.94)' }
+                    ],
+                    { duration: 300, easing: 'cubic-bezier(.5,0,.9,.5)', fill: 'forwards' }
+                ).finished;
+                enterApp();
+            };
+            animateLogo().catch(enterApp);
+        })();
+    </script>
     <script src="app.js"></script>
 </body>
 </html>
-
