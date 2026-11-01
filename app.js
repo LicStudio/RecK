@@ -5582,6 +5582,11 @@
         const lyricsReturnButton = document.getElementById('lyrics-return-button');
         function updateLyricsMoveHandle(e) {
             if (isDragging) return;
+            if (document.body.classList.contains('intro-active') || document.body.classList.contains('intro-transitioning')) {
+                lyricsMoveHandle.style.display = 'none';
+                lyricsReturnButton.classList.add('hidden');
+                return;
+            }
             e = e || { clientX: -1e6, clientY: -1e6 };
             const rect = cuadroDeLetras.getBoundingClientRect();
             updateLyricsAlignmentControls();
@@ -5646,6 +5651,7 @@
         }
 
         updateLyricsMoveHandle();
+        document.addEventListener('recK:intro-finished', () => updateLyricsMoveHandle(latestLyricsPointer));
 
         lyricsReturnButton.addEventListener('click', (e) => {
             e.preventDefault();
