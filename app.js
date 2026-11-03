@@ -373,7 +373,15 @@
                 scheduled = true;
                 requestAnimationFrame(() => { scheduled = false; refresh(); });
             };
-            new MutationObserver(schedule).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+            new MutationObserver(records => {
+                // Resizing changes layout styles continuously; ResizeObserver and the final class change handle scrollbar updates.
+                const hasRelevantMutation = records.some(record =>
+                    record.type !== 'attributes' ||
+                    record.attributeName !== 'style' ||
+                    !document.body.classList.contains('resizing-active')
+                );
+                if (hasRelevantMutation) schedule();
+            }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
             window.addEventListener('resize', schedule);
             window.addEventListener('scroll', schedule, true);
             new ResizeObserver(schedule).observe(document.documentElement);
@@ -5747,6 +5755,8 @@
         let startY = 0;
         let startX = 0;
         let startRect = { top: 0, left: 0, width: 0, height: 0 };
+        let resizeAnimationFrame = 0;
+        let pendingResizePointer = null;
 
         function getPointerY(e) { return e.touches ? e.touches[0].clientY : e.clientY; }
         function getPointerX(e) { return e.touches ? e.touches[0].clientX : e.clientX; }
@@ -5816,8 +5826,21 @@
         function handleResize(e) {
             if (!isDragging) return;
             e.preventDefault();
-            const currentY = getPointerY(e);
-            const currentX = getPointerX(e);
+            pendingResizePointer = {
+                clientX: getPointerX(e),
+                clientY: getPointerY(e),
+                shiftKey: e.shiftKey
+            };
+            if (!resizeAnimationFrame) resizeAnimationFrame = requestAnimationFrame(applyResizeFrame);
+        }
+
+        function applyResizeFrame() {
+            resizeAnimationFrame = 0;
+            const pointer = pendingResizePointer;
+            pendingResizePointer = null;
+            if (!isDragging || !pointer) return;
+            const currentY = pointer.clientY;
+            const currentX = pointer.clientX;
             const deltaY = currentY - startY;
             const deltaX = currentX - startX;
 
@@ -5860,7 +5883,7 @@
                 const minWidth = window.innerWidth * 0.15;
                 const minHeight = window.innerWidth * 0.05;
 
-                if (e.shiftKey) {
+                if (pointer.shiftKey) {
                     const verticalDelta = resizeState.top ? -deltaY : deltaY;
                     const horizontalDelta = resizeState.left ? -deltaX : deltaX;
 
@@ -5935,6 +5958,11 @@
 
         function stopResize() {
             if (!isDragging) return;
+            if (resizeAnimationFrame) {
+                cancelAnimationFrame(resizeAnimationFrame);
+                resizeAnimationFrame = 0;
+                applyResizeFrame();
+            }
             isDragging = false;
             const resizedTarget = currentTargetElement;
             currentTargetElement = null;
